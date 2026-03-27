@@ -106,3 +106,23 @@ def get_cifar10_loaders(batch_size=64):
         datasets.CIFAR10('./data', train=False, transform=transform),
         batch_size=1, shuffle=False)
     return train_loader, test_loader
+
+
+# -------------------------------
+# 4. 학습 함수
+# -------------------------------
+def train(model, device, train_loader, epochs=15, lr=0.001):
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    model.train()
+    for epoch in range(epochs):
+        for data, target in train_loader:
+            data, target = data.to(device), target.to(device)
+            optimizer.zero_grad()
+            output = model(data)
+            loss = F.cross_entropy(output, target)
+            loss.backward()
+            optimizer.step()
+
+
+
+
