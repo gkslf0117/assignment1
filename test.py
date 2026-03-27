@@ -124,5 +124,72 @@ def train(model, device, train_loader, epochs=15, lr=0.001):
             optimizer.step()
 
 
+# -------------------------------
+# 5. 공격 테스트 
+# -------------------------------
+def test_attack(model, device, test_loader, attack_fn, attack_name,
+                eps=0.1, num_samples=5, dataset_name='MNIST'):
+
+    os.makedirs('results', exist_ok=True)
+    model.eval()
+
+    success_count = 0
+    total_samples = 0
+    max_samples = 100
+
+    for i, (data, target) in enumerate(test_loader):
+
+        if total_samples >= max_samples:
+            break
+
+        data, target = data.to(device), target.to(device)
+
+        # 원래 맞은 샘플만 공격
+        output = model(data)
+        init_pred = output.argmax(dim=1)
+
+        if init_pred.item() != target.item():
+            continue
+
+        total_samples += 1
+
+        # -------------------------
+        # 공격 수행
+        # -------------------------
+        
+        # 'Untargeted'가 이름에 포함되어 있는지 먼저 확인
+        if 'Untargeted' in attack_name:
+            if 'PGD' in attack_name:
+                adv_data = attack_fn(
+                    model, data, target, k=40, eps=eps, eps_step=eps/4
+                )
+            else:
+                adv_data = attack_fn(
+                    model, data, target, eps
+                )
+            pred = model(adv_data).argmax(dim=1)
+            
+            # 원래 정답과 달라지면 공격 성공
+            if pred.item() != target.item():
+                success_count += 1
+
+        else: # Targeted 공격인 경우
+            target_class = torch.randint_like(target, 0, 10)
+            while target_class.item() == target.item():
+                target_class = torch.randint_like(target, 0, 10)
+
+            if 'PGD' in attack_name:
+                adv_data = attack_fn(
+                    model, data, target_class, k=40, eps=eps, eps_step=0.01
+                )
+            else:
+                adv_data = attack_fn(
+                    model, data, target_class, eps
+                )
+            pred = model(adv_data).argmax(dim=1)
+            
+            # 목표했던 클래스(target_class)로 예측하면 공격 성공
+            if pred.item() == target_class.item():
+                success_count += 1
 
 
