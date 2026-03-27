@@ -28,3 +28,60 @@ class SimpleCNN(nn.Module):
         x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
+# -------------------------------
+# 2. 공격 함수들
+# -------------------------------
+
+# Targeted FGSM
+def fgsm_targeted(model, x, target, eps):
+    x_adv = x.clone().detach().requires_grad_(True)
+    output = model(x_adv)
+    loss = F.cross_entropy(output, target)
+    model.zero_grad()
+    loss.backward()
+    x_adv = x_adv - eps * x_adv.grad.sign()
+    x_adv = torch.clamp(x_adv, 0, 1)
+    return x_adv.detach()
+
+# Untargeted FGSM
+def fgsm_untargeted(model, x, label, eps):
+    x_adv = x.clone().detach().requires_grad_(True)
+    output = model(x_adv)
+    loss = F.cross_entropy(output, label)
+    model.zero_grad()
+    loss.backward()
+    x_adv = x_adv + eps * x_adv.grad.sign()
+    x_adv = torch.clamp(x_adv, 0, 1)
+    return x_adv.detach()
+
+# Targeted PGD
+def pgd_targeted(model, x, target, k=40, eps=0.3, eps_step=0.01):
+    k = int(k)
+    x_adv = x.clone().detach()
+    for _ in range(k):
+        x_adv.requires_grad_(True)
+        output = model(x_adv)
+        loss = F.cross_entropy(output, target)
+        model.zero_grad()
+        loss.backward()
+        x_adv = x_adv - eps_step * x_adv.grad.sign()
+        x_adv = torch.max(torch.min(x_adv, x + eps), x - eps)
+        x_adv = torch.clamp(x_adv, 0, 1).detach()
+    return x_adv
+
+# Untargeted PGD
+def pgd_untargeted(model, x, label, k=40, eps=0.3, eps_step=0.01):
+    k = int(k)
+    x_adv = x.clone().detach()
+    for _ in range(k):
+        x_adv.requires_grad_(True)
+        output = model(x_adv)
+        loss = F.cross_entropy(output, label)
+        model.zero_grad()
+        loss.backward()
+        x_adv = x_adv + eps_step * x_adv.grad.sign()
+        x_adv = torch.max(torch.min(x_adv, x + eps), x - eps)
+        x_adv = torch.clamp(x_adv, 0, 1).detach()
+    return x_adv
+
+
