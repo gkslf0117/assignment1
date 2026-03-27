@@ -84,4 +84,25 @@ def pgd_untargeted(model, x, label, k=40, eps=0.3, eps_step=0.01):
         x_adv = torch.clamp(x_adv, 0, 1).detach()
     return x_adv
 
+# -------------------------------
+# 3. 데이터셋
+# -------------------------------
+def get_mnist_loaders(batch_size=64):
+    transform = transforms.Compose([transforms.ToTensor()])
+    train_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('./data', train=True, download=True, transform=transform),
+        batch_size=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('./data', train=False, transform=transform),
+        batch_size=1, shuffle=False)
+    return train_loader, test_loader
 
+def get_cifar10_loaders(batch_size=64):
+    transform = transforms.Compose([transforms.ToTensor()])
+    train_loader = torch.utils.data.DataLoader(
+        datasets.CIFAR10('./data', train=True, download=True, transform=transform),
+        batch_size=batch_size, shuffle=True)
+    test_loader = torch.utils.data.DataLoader(
+        datasets.CIFAR10('./data', train=False, transform=transform),
+        batch_size=1, shuffle=False)
+    return train_loader, test_loader
