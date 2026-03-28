@@ -193,3 +193,81 @@ def test_attack(model, device, test_loader, attack_fn, attack_name,
                 success_count += 1
 
 
+
+        # -------------------------
+        # 시각화
+        # -------------------------
+        if i < num_samples:
+
+            fig, axs = plt.subplots(1, 3, figsize=(10, 3))
+
+            # MNIST (grayscale)
+            if data.shape[1] == 1:
+
+                axs[0].imshow(
+                    data[0].cpu().squeeze(),
+                    cmap='gray'
+                )
+
+                axs[1].imshow(
+                    adv_data[0].cpu().squeeze(),
+                    cmap='gray'
+                )
+
+                perturb = (
+                    adv_data - data
+                ).cpu().squeeze()
+
+                axs[2].imshow(
+                    perturb*10,
+                    cmap='gray'
+                )
+
+            # CIFAR10 (RGB)
+            else:
+
+                axs[0].imshow(
+                    data[0].cpu().permute(1, 2, 0)
+                )
+
+                axs[1].imshow(
+                    adv_data[0].cpu().permute(1, 2, 0)
+                )
+
+                perturb = (
+                    adv_data - data
+                )[0].cpu().permute(1, 2, 0)
+
+                axs[2].imshow(
+                    perturb*10
+                )
+
+            axs[0].set_title(f"Orig: {target.item()}")
+            axs[1].set_title(f"Adv: {pred.item()}")
+            axs[2].set_title("Perturbation")
+
+            for ax in axs:
+                ax.axis('off')
+
+            plt.tight_layout()
+
+            plt.savefig(
+                f'results/{dataset_name}_{attack_name}_sample000_{i}.png'
+            )
+
+            plt.close()
+
+    # -------------------------
+    # success rate 출력
+    # -------------------------
+    if total_samples > 0:
+        success_rate = 100 * success_count / total_samples
+    else:
+        success_rate = 0
+
+    print(
+        f"{dataset_name} {attack_name} success rate: "
+        f"{success_rate:.2f}%"
+    )
+
+
