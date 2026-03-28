@@ -271,3 +271,33 @@ def test_attack(model, device, test_loader, attack_fn, attack_name,
     )
 
 
+# -------------------------------
+# 6. 메인
+# -------------------------------
+if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    for dataset_name in ['MNIST', 'CIFAR10']:
+        if dataset_name == 'MNIST':
+            train_loader, test_loader = get_mnist_loaders()
+            model = SimpleCNN(num_classes=10, input_channels=1).to(device)
+            eps_values = {'FGSM':0.1, 'PGD':0.1}
+        else:
+            train_loader, test_loader = get_cifar10_loaders()
+            model = SimpleCNN(num_classes=10, input_channels=3).to(device)
+            eps_values = {'FGSM':0.1, 'PGD':0.1}
+
+        print(f"=== Training {dataset_name} model ===")
+        train(model, device, train_loader, epochs=1)
+        print(f"=== Testing attacks on {dataset_name} ===")
+
+        attacks = {
+            'Targeted_FGSM': fgsm_targeted,
+            'Untargeted_FGSM': fgsm_untargeted,
+            'Targeted_PGD': pgd_targeted,
+            'Untargeted_PGD': pgd_untargeted
+        }
+
+        for name, fn in attacks.items():
+            eps = eps_values['FGSM'] if 'FGSM' in name else eps_values['PGD']
+            test_attack(model, device, test_loader, fn, name, eps=eps, dataset_name=dataset_name)
