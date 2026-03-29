@@ -32,16 +32,36 @@ class SimpleCNN(nn.Module):
 # 2. 공격 함수들
 # -------------------------------
 
-# Targeted FGSM
-def fgsm_targeted(model, x, target, eps):
-    x_adv = x.clone().detach().requires_grad_(True)
-    output = model(x_adv)
-    loss = F.cross_entropy(output, target)
-    model.zero_grad()
-    loss.backward()
-    x_adv = x_adv - eps * x_adv.grad.sign()
-    x_adv = torch.clamp(x_adv, 0, 1)
-    return x_adv.detach()
+def fgsm_targeted(model, x, target, eps, iters=10):
+    """
+    반복형(Iterative)으로 수정한 I-FGSM 버전.
+    
+    """
+    # 10번에 나누어 이동하기 위해 스텝 사이즈(alpha)를 eps보다 작게 설정
+    alpha = eps / (iters / 2) 
+    
+    x_adv = x.clone().detach()
+    
+    for _ in range(iters):
+        x_adv.requires_grad_(True)
+        output = model(x_adv)
+        
+        # 타겟 클래스에 대한 loss 계산
+        loss = F.cross_entropy(output, target)
+        
+        model.zero_grad()
+        loss.backward()
+        
+        # 타겟 클래스로 가기 위해 loss를 줄이는 방향으로 이동
+        x_adv = x_adv - alpha * x_adv.grad.sign()
+        
+        # 원본 이미지 x를 기준으로 eps 반경 내로 클리핑 
+        x_adv = torch.max(torch.min(x_adv, x + eps), x - eps)
+        
+        # 이미지 픽셀 범위를 0~1로 제한
+        x_adv = torch.clamp(x_adv, 0, 1).detach()
+        
+    return x_adv
 
 # Untargeted FGSM
 def fgsm_untargeted(model, x, label, eps):
@@ -281,14 +301,14 @@ if __name__ == "__main__":
         if dataset_name == 'MNIST':
             train_loader, test_loader = get_mnist_loaders()
             model = SimpleCNN(num_classes=10, input_channels=1).to(device)
-            eps_values = {'FGSM':0.1, 'PGD':0.1}
+            eps_values = {'FGSM':0.3, 'PGD':0.3}
         else:
             train_loader, test_loader = get_cifar10_loaders()
             model = SimpleCNN(num_classes=10, input_channels=3).to(device)
             eps_values = {'FGSM':0.1, 'PGD':0.1}
 
         print(f"=== Training {dataset_name} model ===")
-        train(model, device, train_loader, epochs=1)
+        train(model, device, train_loader, epochs=2)
         print(f"=== Testing attacks on {dataset_name} ===")
 
         attacks = {
